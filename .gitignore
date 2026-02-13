@@ -1,6 +1,7 @@
 # Downloads
 downloads/*.mp3
 history.json
+settings.json
 downloads/*.mp4
 downloads/*.zip
 !downloads/.gitkeep

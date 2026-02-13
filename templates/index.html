@@ -217,6 +217,31 @@
 
         .empty-state { color: #666; text-align: center; padding: 20px; }
 
+        /* Settings */
+        .setting-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .setting-row:last-child { border-bottom: none; }
+        .setting-info { flex: 1; }
+        .setting-label { color: #fff; font-size: 14px; display: block; }
+        .setting-desc { color: #666; font-size: 12px; }
+
+        .switch {
+            position: relative; width: 50px; height: 26px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255, 255, 255, 0.1); border-radius: 26px; transition: 0.3s;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px;
+            background: #fff; border-radius: 50%; transition: 0.3s;
+        }
+        input:checked + .slider { background: #ff0050; }
+        input:checked + .slider:before { transform: translateX(24px); }
+
         /* Notification banner */
         .notif-banner {
             background: rgba(255, 193, 7, 0.1); color: #ffc107;
@@ -356,6 +381,42 @@
             </div>
             <div class="history-list" id="historyList">
                 <div class="empty-state">Chargement...</div>
+            </div>
+        </div>
+
+        <!-- Settings Card -->
+        <div class="card">
+            <h2 style="margin-bottom: 20px;">⚙️ Paramètres</h2>
+
+            <div class="setting-row">
+                <div class="setting-info">
+                    <span class="setting-label">Auto-nettoyage</span>
+                    <span class="setting-desc">Supprimer automatiquement les vieux fichiers</span>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="autoCleanup" onchange="toggleAutoCleanup()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-row">
+                <div class="setting-info">
+                    <span class="setting-label">Garder les fichiers</span>
+                    <span class="setting-desc">Nombre de jours avant suppression</span>
+                </div>
+                <select id="cleanupDays" onchange="updateCleanupDays()">
+                    <option value="1">1 jour</option>
+                    <option value="3">3 jours</option>
+                    <option value="7" selected>7 jours</option>
+                    <option value="14">14 jours</option>
+                    <option value="30">30 jours</option>
+                </select>
+            </div>
+
+            <div class="setting-row" style="margin-top: 15px;">
+                <button class="btn-secondary" onclick="cleanupNow()" style="width: 100%;">
+                    🧹 Nettoyer maintenant
+                </button>
             </div>
         </div>
     </div>
@@ -827,6 +888,62 @@
             } catch (e) { console.error(e); }
         }
 
+        // ========== SETTINGS ==========
+        async function loadSettings() {
+            try {
+                const response = await fetch('/api/settings');
+                const result = await response.json();
+                if (result.success) {
+                    document.getElementById('autoCleanup').checked = result.settings.auto_cleanup_enabled;
+                    document.getElementById('cleanupDays').value = result.settings.cleanup_days;
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function toggleAutoCleanup() {
+            const enabled = document.getElementById('autoCleanup').checked;
+            try {
+                await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ auto_cleanup_enabled: enabled })
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        async function updateCleanupDays() {
+            const days = parseInt(document.getElementById('cleanupDays').value);
+            try {
+                await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cleanup_days: days })
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        async function cleanupNow() {
+            const days = parseInt(document.getElementById('cleanupDays').value);
+            if (!confirm(`Supprimer les fichiers de plus de ${days} jour(s) ?`)) return;
+
+            try {
+                const response = await fetch('/api/cleanup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ days })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    if (result.count > 0) {
+                        alert(`${result.count} fichier(s) supprimé(s)`);
+                    } else {
+                        alert('Aucun fichier à supprimer');
+                    }
+                    loadFiles();
+                }
+            } catch (e) { console.error(e); }
+        }
+
         // ========== INIT ==========
         document.getElementById('searchQuery').addEventListener('keypress', e => {
             if (e.key === 'Enter') searchYouTube();
@@ -839,6 +956,7 @@
         checkNotifications();
         loadFiles();
         loadHistory();
+        loadSettings();
     </script>
 </body>
 </html>

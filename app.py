@@ -13,7 +13,7 @@ import zipfile
 import re
 import urllib.parse
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
@@ -21,9 +21,58 @@ BASE_DIR = Path(__file__).parent
 DOWNLOAD_DIR = BASE_DIR / "downloads"
 DOWNLOAD_DIR.mkdir(exist_ok=True)
 HISTORY_FILE = BASE_DIR / "history.json"
+SETTINGS_FILE = BASE_DIR / "settings.json"
 
 # Status des téléchargements en cours
 download_status = {}
+
+
+def load_settings():
+    """Charge les paramètres depuis le fichier JSON"""
+    default_settings = {
+        'auto_cleanup_enabled': False,
+        'cleanup_days': 7
+    }
+    if SETTINGS_FILE.exists():
+        try:
+            with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                settings = json.load(f)
+                return {**default_settings, **settings}
+        except:
+            return default_settings
+    return default_settings
+
+
+def save_settings(settings):
+    """Sauvegarde les paramètres dans le fichier JSON"""
+    with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(settings, f, ensure_ascii=False, indent=2)
+
+
+def cleanup_old_files(days=7):
+    """Supprime les fichiers plus vieux que X jours"""
+    cutoff = datetime.now() - timedelta(days=days)
+    deleted = []
+
+    for f in DOWNLOAD_DIR.iterdir():
+        if f.is_file() and f.name != '.gitkeep':
+            file_time = datetime.fromtimestamp(f.stat().st_mtime)
+            if file_time < cutoff:
+                try:
+                    f.unlink()
+                    deleted.append(f.name)
+                except:
+                    pass
+
+    return deleted
+
+
+def auto_cleanup_if_enabled():
+    """Exécute le nettoyage si activé"""
+    settings = load_settings()
+    if settings.get('auto_cleanup_enabled', False):
+        days = settings.get('cleanup_days', 7)
+        cleanup_old_files(days)
 
 
 def load_history():
@@ -431,6 +480,31 @@ def delete_file():
             file_path.unlink()
             return jsonify({'success': True})
     return jsonify({'success': False, 'error': 'Fichier non trouvé'})
+
+
+@app.route('/api/settings')
+def get_settings():
+    """Retourne les paramètres"""
+    settings = load_settings()
+    return jsonify({'success': True, 'settings': settings})
+
+
+@app.route('/api/settings', methods=['POST'])
+def update_settings():
+    """Met à jour les paramètres"""
+    data = request.json
+    settings = load_settings()
+    settings.update(data)
+    save_settings(settings)
+    return jsonify({'success': True, 'settings': settings})
+
+
+@app.route('/api/cleanup', methods=['POST'])
+def api_cleanup():
+    """Nettoie les vieux fichiers"""
+    days = request.json.get('days', 7)
+    deleted = cleanup_old_files(days)
+    return jsonify({'success': True, 'deleted': deleted, 'count': len(deleted)})
 
 
 @app.route('/api/search', methods=['POST'])
