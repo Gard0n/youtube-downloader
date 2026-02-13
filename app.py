@@ -457,7 +457,7 @@ def search_youtube():
             results = []
             for entry in info.get('entries', []):
                 if entry:
-                    duration = entry.get('duration', 0) or 0
+                    duration = int(entry.get('duration', 0) or 0)
                     minutes, seconds = divmod(duration, 60)
                     results.append({
                         'id': entry.get('id', ''),
@@ -476,4 +476,4 @@ def search_youtube():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5001)
