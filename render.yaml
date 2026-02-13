@@ -1,0 +1,10 @@
+# Configuration pour Render.com (gratuit)
+services:
+  - type: web
+    name: youtube-downloader
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: CLOUDINARY_URL
+        sync: false

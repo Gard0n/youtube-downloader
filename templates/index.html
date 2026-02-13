@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Downloader</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        h1 {
+            color: #fff;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        h1 span { color: #ff0050; }
+
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 14px;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            background: transparent;
+            color: #aaa;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tab:hover { border-color: rgba(255, 255, 255, 0.3); }
+        .tab.active {
+            border-color: #ff0050;
+            color: #fff;
+            background: rgba(255, 0, 80, 0.1);
+        }
+
+        /* Inputs */
+        .input-group { margin-bottom: 20px; }
+
+        label {
+            display: block;
+            color: #aaa;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            font-size: 16px;
+            transition: border-color 0.3s;
+            font-family: inherit;
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #ff0050;
+        }
+
+        input::placeholder, textarea::placeholder { color: #666; }
+
+        /* Options */
+        .options {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .option-group { flex: 1; }
+
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #ff0050;
+        }
+
+        select option {
+            background: #1a1a2e;
+            color: #fff;
+        }
+
+        /* Buttons */
+        .buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover { transform: translateY(-2px); }
+        button:active { transform: translateY(0); }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.2); }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #ff0050 0%, #ff4081 100%);
+            color: #fff;
+            box-shadow: 0 10px 30px rgba(255, 0, 80, 0.3);
+        }
+
+        .btn-primary:hover { box-shadow: 0 15px 40px rgba(255, 0, 80, 0.4); }
+
+        /* Video Info */
+        .video-info {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            display: none;
+        }
+
+        .video-info.show { display: block; }
+
+        .video-info img {
+            width: 100%;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .video-info h3 {
+            color: #fff;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .video-info p {
+            color: #aaa;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        /* Playlist */
+        .playlist-videos {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        .playlist-video {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            background: rgba(255, 255, 255, 0.03);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .playlist-video:hover { background: rgba(255, 255, 255, 0.08); }
+
+        .playlist-video input[type="checkbox"] {
+            margin-right: 12px;
+            width: 18px;
+            height: 18px;
+            accent-color: #ff0050;
+        }
+
+        .playlist-video .title {
+            flex: 1;
+            color: #fff;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .playlist-video .duration {
+            color: #666;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        .select-all {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            color: #aaa;
+            font-size: 14px;
+        }
+
+        /* Status */
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+        }
+
+        .status.show { display: block; }
+        .status.loading {
+            background: rgba(255, 193, 7, 0.1);
+            color: #ffc107;
+        }
+        .status.success {
+            background: rgba(76, 175, 80, 0.1);
+            color: #4caf50;
+        }
+        .status.error {
+            background: rgba(244, 67, 54, 0.1);
+            color: #f44336;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Progress */
+        .progress-container {
+            margin-top: 15px;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0050, #ff4081);
+            transition: width 0.3s;
+        }
+
+        .progress-text {
+            color: #aaa;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        /* Results */
+        .results {
+            margin-top: 15px;
+        }
+
+        .result-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .result-item.success { border-left: 3px solid #4caf50; }
+        .result-item.error { border-left: 3px solid #f44336; }
+
+        .result-item .icon {
+            margin-right: 10px;
+            font-size: 18px;
+        }
+
+        .result-item .name {
+            flex: 1;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .result-item a {
+            color: #4caf50;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .result-item a:hover { text-decoration: underline; }
+
+        /* Files list */
+        .files-section {
+            margin-top: 20px;
+        }
+
+        .files-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .files-header h3 {
+            color: #fff;
+            font-size: 16px;
+        }
+
+        .files-header button {
+            flex: none;
+            padding: 8px 16px;
+            font-size: 12px;
+        }
+
+        .files-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .file-item .icon { margin-right: 10px; }
+        .file-item .name {
+            flex: 1;
+            color: #fff;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-item .size {
+            color: #666;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        .file-item a {
+            color: #ff0050;
+            text-decoration: none;
+            margin-left: 10px;
+        }
+
+        /* Hide sections */
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1><span>YouTube</span> Downloader</h1>
+            <p class="subtitle">Télécharge des vidéos, playlists, ou plusieurs URLs</p>
+
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab active" data-tab="single" onclick="switchTab('single')">Vidéo / Playlist</button>
+                <button class="tab" data-tab="multi" onclick="switchTab('multi')">Multi-URLs</button>
+            </div>
+
+            <!-- Single URL -->
+            <div id="tab-single">
+                <div class="input-group">
+                    <label>URL YouTube (vidéo ou playlist)</label>
+                    <input type="text" id="url" placeholder="https://www.youtube.com/watch?v=... ou playlist?list=...">
+                </div>
+            </div>
+
+            <!-- Multiple URLs -->
+            <div id="tab-multi" class="hidden">
+                <div class="input-group">
+                    <label>URLs YouTube (une par ligne)</label>
+                    <textarea id="urls" placeholder="https://www.youtube.com/watch?v=VIDEO1&#10;https://www.youtube.com/watch?v=VIDEO2&#10;https://www.youtube.com/watch?v=VIDEO3"></textarea>
+                </div>
+            </div>
+
+            <!-- Options -->
+            <div class="options">
+                <div class="option-group">
+                    <label>Format</label>
+                    <select id="format" onchange="updateQuality()">
+                        <option value="mp3">MP3 (Audio)</option>
+                        <option value="mp4">MP4 (Vidéo)</option>
+                    </select>
+                </div>
+                <div class="option-group">
+                    <label>Qualité</label>
+                    <select id="quality">
+                        <option value="128">128 kbps</option>
+                        <option value="192" selected>192 kbps</option>
+                        <option value="320">320 kbps</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Buttons -->
+            <div class="buttons">
+                <button class="btn-secondary" id="infoBtn" onclick="getInfo()">Infos</button>
+                <button class="btn-primary" id="downloadBtn" onclick="download()">Télécharger</button>
+            </div>
+
+            <!-- Video/Playlist Info -->
+            <div class="video-info" id="videoInfo">
+                <img id="thumbnail" src="" alt="Thumbnail">
+                <h3 id="title"></h3>
+                <p><strong>Chaîne:</strong> <span id="channel"></span></p>
+                <p id="durationInfo"><strong>Durée:</strong> <span id="duration"></span></p>
+                <p id="countInfo" class="hidden"><strong>Vidéos:</strong> <span id="count"></span></p>
+
+                <!-- Playlist videos -->
+                <div id="playlistVideos" class="hidden">
+                    <div class="select-all">
+                        <input type="checkbox" id="selectAll" checked onchange="toggleSelectAll()">
+                        <label for="selectAll">Tout sélectionner</label>
+                    </div>
+                    <div class="playlist-videos" id="videoList"></div>
+                    <button class="btn-primary" style="margin-top: 15px; width: 100%;" onclick="downloadPlaylist()">
+                        Télécharger la sélection
+                    </button>
+                </div>
+            </div>
+
+            <!-- Status -->
+            <div class="status" id="status"></div>
+
+            <!-- Progress -->
+            <div class="progress-container hidden" id="progressContainer">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                </div>
+                <div class="progress-text" id="progressText">0 / 0</div>
+            </div>
+
+            <!-- Results -->
+            <div class="results hidden" id="results"></div>
+        </div>
+
+        <!-- Downloaded Files -->
+        <div class="card files-section">
+            <div class="files-header">
+                <h3>Fichiers téléchargés</h3>
+                <button class="btn-secondary" onclick="loadFiles()">Rafraîchir</button>
+            </div>
+            <div class="files-list" id="filesList">
+                <p style="color: #666; text-align: center;">Chargement...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTab = 'single';
+        let playlistInfo = null;
+        let currentTaskId = null;
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+
+            document.getElementById('tab-single').classList.toggle('hidden', tab !== 'single');
+            document.getElementById('tab-multi').classList.toggle('hidden', tab !== 'multi');
+            document.getElementById('infoBtn').classList.toggle('hidden', tab !== 'single');
+
+            hideStatus();
+            document.getElementById('videoInfo').classList.remove('show');
+        }
+
+        function updateQuality() {
+            const format = document.getElementById('format').value;
+            const quality = document.getElementById('quality');
+
+            if (format === 'mp3') {
+                quality.innerHTML = `
+                    <option value="128">128 kbps</option>
+                    <option value="192" selected>192 kbps</option>
+                    <option value="320">320 kbps</option>
+                `;
+            } else {
+                quality.innerHTML = `
+                    <option value="360">360p</option>
+                    <option value="480">480p</option>
+                    <option value="720">720p</option>
+                    <option value="best" selected>Meilleure</option>
+                `;
+            }
+        }
+
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.className = 'status show ' + type;
+            status.innerHTML = message;
+        }
+
+        function hideStatus() {
+            document.getElementById('status').className = 'status';
+        }
+
+        async function getInfo() {
+            const url = document.getElementById('url').value.trim();
+            if (!url) {
+                showStatus('Veuillez entrer une URL', 'error');
+                return;
+            }
+
+            showStatus('<span class="spinner"></span>Récupération des infos...', 'loading');
+            document.getElementById('videoInfo').classList.remove('show');
+
+            try {
+                const response = await fetch('/api/info', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const info = result.data;
+                    playlistInfo = info;
+
+                    document.getElementById('thumbnail').src = info.thumbnail;
+                    document.getElementById('title').textContent = info.title;
+                    document.getElementById('channel').textContent = info.channel;
+
+                    if (info.type === 'playlist') {
+                        document.getElementById('durationInfo').classList.add('hidden');
+                        document.getElementById('countInfo').classList.remove('hidden');
+                        document.getElementById('count').textContent = info.count + ' vidéos';
+                        document.getElementById('playlistVideos').classList.remove('hidden');
+
+                        // Build video list
+                        const list = document.getElementById('videoList');
+                        list.innerHTML = info.videos.map(v => {
+                            const mins = Math.floor(v.duration / 60);
+                            const secs = v.duration % 60;
+                            return `
+                                <div class="playlist-video" onclick="toggleVideo('${v.id}')">
+                                    <input type="checkbox" class="video-checkbox" data-id="${v.id}" checked onclick="event.stopPropagation()">
+                                    <span class="title">${v.title}</span>
+                                    <span class="duration">${mins}:${secs.toString().padStart(2, '0')}</span>
+                                </div>
+                            `;
+                        }).join('');
+                    } else {
+                        document.getElementById('durationInfo').classList.remove('hidden');
+                        document.getElementById('countInfo').classList.add('hidden');
+                        document.getElementById('duration').textContent = info.duration;
+                        document.getElementById('playlistVideos').classList.add('hidden');
+                    }
+
+                    document.getElementById('videoInfo').classList.add('show');
+                    hideStatus();
+                } else {
+                    showStatus('Erreur: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showStatus('Erreur de connexion', 'error');
+            }
+        }
+
+        function toggleVideo(id) {
+            const checkbox = document.querySelector(`.video-checkbox[data-id="${id}"]`);
+            checkbox.checked = !checkbox.checked;
+            updateSelectAll();
+        }
+
+        function toggleSelectAll() {
+            const checked = document.getElementById('selectAll').checked;
+            document.querySelectorAll('.video-checkbox').forEach(cb => cb.checked = checked);
+        }
+
+        function updateSelectAll() {
+            const all = document.querySelectorAll('.video-checkbox');
+            const checked = document.querySelectorAll('.video-checkbox:checked');
+            document.getElementById('selectAll').checked = all.length === checked.length;
+        }
+
+        async function download() {
+            const format = document.getElementById('format').value;
+            const quality = document.getElementById('quality').value;
+            let urls = [];
+
+            if (currentTab === 'single') {
+                const url = document.getElementById('url').value.trim();
+                if (!url) {
+                    showStatus('Veuillez entrer une URL', 'error');
+                    return;
+                }
+                urls = [url];
+            } else {
+                const text = document.getElementById('urls').value.trim();
+                if (!text) {
+                    showStatus('Veuillez entrer au moins une URL', 'error');
+                    return;
+                }
+                urls = text.split('\n').filter(u => u.trim());
+            }
+
+            const btn = document.getElementById('downloadBtn');
+            btn.disabled = true;
+            btn.textContent = 'Téléchargement...';
+
+            showStatus('<span class="spinner"></span>Téléchargement en cours...', 'loading');
+            document.getElementById('results').classList.add('hidden');
+
+            try {
+                const response = await fetch('/api/download', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ urls, format, quality })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    if (result.task_id) {
+                        // Multi-download
+                        currentTaskId = result.task_id;
+                        document.getElementById('progressContainer').classList.remove('hidden');
+                        pollStatus(result.task_id, result.total);
+                    } else {
+                        // Single download
+                        const filename = result.data.filename;
+                        showStatus(`Terminé ! <a href="/downloads/${encodeURIComponent(filename)}" style="color: #4caf50;">${filename}</a>`, 'success');
+                        loadFiles();
+                        btn.disabled = false;
+                        btn.textContent = 'Télécharger';
+                    }
+                } else {
+                    showStatus('Erreur: ' + result.error, 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Télécharger';
+                }
+            } catch (error) {
+                showStatus('Erreur de connexion', 'error');
+                btn.disabled = false;
+                btn.textContent = 'Télécharger';
+            }
+        }
+
+        async function downloadPlaylist() {
+            if (!playlistInfo || playlistInfo.type !== 'playlist') return;
+
+            const format = document.getElementById('format').value;
+            const quality = document.getElementById('quality').value;
+            const url = document.getElementById('url').value.trim();
+
+            const selected = Array.from(document.querySelectorAll('.video-checkbox:checked'))
+                .map(cb => cb.dataset.id);
+
+            if (selected.length === 0) {
+                showStatus('Sélectionnez au moins une vidéo', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('downloadBtn');
+            btn.disabled = true;
+
+            showStatus('<span class="spinner"></span>Démarrage du téléchargement...', 'loading');
+            document.getElementById('progressContainer').classList.remove('hidden');
+
+            try {
+                const response = await fetch('/api/download/playlist', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url, format, quality, selected })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    currentTaskId = result.task_id;
+                    pollStatus(result.task_id, result.total);
+                } else {
+                    showStatus('Erreur: ' + result.error, 'error');
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                showStatus('Erreur de connexion', 'error');
+                btn.disabled = false;
+            }
+        }
+
+        async function pollStatus(taskId, total) {
+            const interval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/status/${taskId}`);
+                    const result = await response.json();
+
+                    if (result.success) {
+                        const data = result.data;
+                        const completed = data.completed || 0;
+                        const percent = (completed / total) * 100;
+
+                        document.getElementById('progressFill').style.width = percent + '%';
+                        document.getElementById('progressText').textContent = `${completed} / ${total} - ${data.current || ''}`;
+
+                        if (data.status === 'completed') {
+                            clearInterval(interval);
+                            showResults(data.results, data.zip_file);
+                            document.getElementById('downloadBtn').disabled = false;
+                            document.getElementById('downloadBtn').textContent = 'Télécharger';
+
+                            if (data.zip_file) {
+                                showStatus(`Terminé ! <a href="/downloads/${encodeURIComponent(data.zip_file)}" style="color: #4caf50; font-weight: bold;">Télécharger le ZIP</a>`, 'success');
+                            } else {
+                                showStatus('Téléchargement terminé !', 'success');
+                            }
+                            loadFiles();
+                        }
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            }, 1000);
+        }
+
+        function showResults(results, zipFile) {
+            const container = document.getElementById('results');
+            container.classList.remove('hidden');
+
+            let html = '';
+
+            // Afficher le bouton ZIP en premier si disponible
+            if (zipFile) {
+                html += `
+                    <div class="result-item success" style="background: rgba(76, 175, 80, 0.1); border-left: 3px solid #4caf50; margin-bottom: 15px;">
+                        <span class="icon">📦</span>
+                        <span class="name" style="font-weight: bold;">Télécharger tout en ZIP</span>
+                        <a href="/downloads/${encodeURIComponent(zipFile)}" style="background: #4caf50; color: white; padding: 5px 15px; border-radius: 5px; text-decoration: none;">${zipFile}</a>
+                    </div>
+                `;
+            }
+
+            // Afficher les résultats individuels
+            html += results.map(r => {
+                if (r.success) {
+                    return `
+                        <div class="result-item success">
+                            <span class="icon">✓</span>
+                            <span class="name">${r.title}</span>
+                        </div>
+                    `;
+                } else {
+                    return `
+                        <div class="result-item error">
+                            <span class="icon">✗</span>
+                            <span class="name">${r.error}</span>
+                        </div>
+                    `;
+                }
+            }).join('');
+
+            container.innerHTML = html;
+        }
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        async function loadFiles() {
+            try {
+                const response = await fetch('/api/files');
+                const result = await response.json();
+
+                const list = document.getElementById('filesList');
+
+                if (result.success && result.files.length > 0) {
+                    list.innerHTML = result.files.map(f => `
+                        <div class="file-item">
+                            <span class="icon">${f.name.endsWith('.mp3') ? '🎵' : '🎬'}</span>
+                            <span class="name" title="${f.name}">${f.name}</span>
+                            <span class="size">${formatSize(f.size)}</span>
+                            <a href="/downloads/${encodeURIComponent(f.name)}">⬇</a>
+                        </div>
+                    `).join('');
+                } else {
+                    list.innerHTML = '<p style="color: #666; text-align: center;">Aucun fichier</p>';
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        // Init
+        document.getElementById('url').addEventListener('keypress', e => {
+            if (e.key === 'Enter') download();
+        });
+
+        loadFiles();
+    </script>
+</body>
+</html>
