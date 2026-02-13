@@ -1,5 +1,6 @@
 # Downloads
 downloads/*.mp3
+history.json
 downloads/*.mp4
 downloads/*.zip
 !downloads/.gitkeep

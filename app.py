@@ -433,5 +433,47 @@ def delete_file():
     return jsonify({'success': False, 'error': 'Fichier non trouvé'})
 
 
+@app.route('/api/search', methods=['POST'])
+def search_youtube():
+    """Recherche sur YouTube"""
+    try:
+        query = request.json.get('query', '')
+        max_results = request.json.get('max_results', 10)
+
+        if not query:
+            return jsonify({'success': False, 'error': 'Requête vide'})
+
+        options = {
+            'quiet': True,
+            'extract_flat': True,
+            'default_search': 'ytsearch',
+        }
+
+        with yt_dlp.YoutubeDL(options) as ydl:
+            # Recherche YouTube
+            search_url = f"ytsearch{max_results}:{query}"
+            info = ydl.extract_info(search_url, download=False)
+
+            results = []
+            for entry in info.get('entries', []):
+                if entry:
+                    duration = entry.get('duration', 0) or 0
+                    minutes, seconds = divmod(duration, 60)
+                    results.append({
+                        'id': entry.get('id', ''),
+                        'title': entry.get('title', 'Unknown'),
+                        'channel': entry.get('channel', entry.get('uploader', 'Unknown')),
+                        'duration': f"{minutes}:{seconds:02d}",
+                        'thumbnail': entry.get('thumbnail', ''),
+                        'url': f"https://www.youtube.com/watch?v={entry.get('id', '')}",
+                        'views': entry.get('view_count', 0),
+                    })
+
+            return jsonify({'success': True, 'results': results})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

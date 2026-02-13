@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YouTube Downloader</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -38,7 +39,7 @@
             flex: 1; padding: 12px;
             border: 2px solid rgba(255, 255, 255, 0.1);
             border-radius: 10px; background: transparent;
-            color: #aaa; font-size: 14px; cursor: pointer;
+            color: #aaa; font-size: 13px; cursor: pointer;
             transition: all 0.3s;
         }
         .tab:hover { border-color: rgba(255, 255, 255, 0.3); }
@@ -91,6 +92,34 @@
         .btn-primary:hover { box-shadow: 0 15px 40px rgba(255, 0, 80, 0.4); }
 
         .btn-danger { background: rgba(244, 67, 54, 0.2); color: #f44336; }
+
+        /* Search Results */
+        .search-results { margin-top: 20px; max-height: 400px; overflow-y: auto; }
+
+        .search-item {
+            display: flex; align-items: center; padding: 12px;
+            border-radius: 10px; margin-bottom: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            cursor: pointer; transition: all 0.2s;
+        }
+        .search-item:hover { background: rgba(255, 255, 255, 0.08); transform: translateX(5px); }
+
+        .search-item img {
+            width: 120px; height: 68px; object-fit: cover;
+            border-radius: 8px; margin-right: 15px;
+        }
+
+        .search-item-info { flex: 1; min-width: 0; }
+        .search-item-title { color: #fff; font-size: 14px; font-weight: 500; margin-bottom: 5px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .search-item-channel { color: #aaa; font-size: 12px; margin-bottom: 3px; }
+        .search-item-duration { color: #ff0050; font-size: 11px; }
+
+        .search-item-btn {
+            padding: 8px 16px; border-radius: 8px; font-size: 12px;
+            background: linear-gradient(135deg, #ff0050, #ff4081); color: #fff;
+            border: none; cursor: pointer; white-space: nowrap;
+        }
 
         /* Video Info */
         .video-info {
@@ -188,9 +217,17 @@
 
         .empty-state { color: #666; text-align: center; padding: 20px; }
 
+        /* Notification banner */
+        .notif-banner {
+            background: rgba(255, 193, 7, 0.1); color: #ffc107;
+            padding: 10px 15px; border-radius: 10px; margin-bottom: 15px;
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 13px;
+        }
+        .notif-banner button { padding: 5px 12px; font-size: 12px; }
+
         .hidden { display: none !important; }
 
-        /* Scrollbar */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 3px; }
         ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 3px; }
@@ -199,23 +236,42 @@
 </head>
 <body>
     <div class="container">
+        <!-- Notification Banner -->
+        <div class="notif-banner hidden" id="notifBanner">
+            <span>🔔 Activer les notifications pour être averti quand un téléchargement est terminé</span>
+            <button class="btn-primary" onclick="requestNotifications()">Activer</button>
+        </div>
+
         <!-- Main Card -->
         <div class="card">
             <h1><span>YouTube</span> Downloader</h1>
-            <p class="subtitle">Télécharge des vidéos, playlists ou plusieurs URLs</p>
+            <p class="subtitle">Recherche, télécharge des vidéos ou playlists</p>
 
             <div class="tabs">
-                <button class="tab active" data-tab="single" onclick="switchTab('single')">Vidéo / Playlist</button>
-                <button class="tab" data-tab="multi" onclick="switchTab('multi')">Multi-URLs</button>
+                <button class="tab active" data-tab="search" onclick="switchTab('search')">🔍 Recherche</button>
+                <button class="tab" data-tab="single" onclick="switchTab('single')">🔗 URL</button>
+                <button class="tab" data-tab="multi" onclick="switchTab('multi')">📋 Multi</button>
             </div>
 
-            <div id="tab-single">
+            <!-- Search Tab -->
+            <div id="tab-search">
+                <div class="input-group">
+                    <label>Rechercher sur YouTube</label>
+                    <input type="text" id="searchQuery" placeholder="Tapez votre recherche...">
+                </div>
+                <button class="btn-primary" style="width: 100%;" onclick="searchYouTube()">🔍 Rechercher</button>
+                <div class="search-results hidden" id="searchResults"></div>
+            </div>
+
+            <!-- Single URL Tab -->
+            <div id="tab-single" class="hidden">
                 <div class="input-group">
                     <label>URL YouTube</label>
-                    <input type="text" id="url" placeholder="https://www.youtube.com/watch?v=... ou playlist?list=...">
+                    <input type="text" id="url" placeholder="https://www.youtube.com/watch?v=...">
                 </div>
             </div>
 
+            <!-- Multi URLs Tab -->
             <div id="tab-multi" class="hidden">
                 <div class="input-group">
                     <label>URLs YouTube (une par ligne)</label>
@@ -241,7 +297,7 @@
                 </div>
             </div>
 
-            <div class="buttons">
+            <div class="buttons" id="urlButtons" style="display: none;">
                 <button class="btn-secondary" id="infoBtn" onclick="getInfo()">Infos</button>
                 <button class="btn-primary" id="downloadBtn" onclick="download()">Télécharger</button>
             </div>
@@ -305,20 +361,57 @@
     </div>
 
     <script>
-        let currentTab = 'single';
+        let currentTab = 'search';
         let playlistInfo = null;
         let currentTaskId = null;
         let pollInterval = null;
+        let notificationsEnabled = false;
 
+        // ========== NOTIFICATIONS ==========
+        function checkNotifications() {
+            if ('Notification' in window) {
+                if (Notification.permission === 'granted') {
+                    notificationsEnabled = true;
+                } else if (Notification.permission !== 'denied') {
+                    document.getElementById('notifBanner').classList.remove('hidden');
+                }
+            }
+        }
+
+        function requestNotifications() {
+            Notification.requestPermission().then(permission => {
+                if (permission === 'granted') {
+                    notificationsEnabled = true;
+                    document.getElementById('notifBanner').classList.add('hidden');
+                    showNotification('Notifications activées', 'Vous serez averti quand vos téléchargements seront terminés');
+                }
+            });
+        }
+
+        function showNotification(title, body) {
+            if (notificationsEnabled && document.hidden) {
+                new Notification(title, {
+                    body: body,
+                    icon: '🎵'
+                });
+            }
+        }
+
+        // ========== TABS ==========
         function switchTab(tab) {
             currentTab = tab;
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+
+            document.getElementById('tab-search').classList.toggle('hidden', tab !== 'search');
             document.getElementById('tab-single').classList.toggle('hidden', tab !== 'single');
             document.getElementById('tab-multi').classList.toggle('hidden', tab !== 'multi');
-            document.getElementById('infoBtn').classList.toggle('hidden', tab !== 'single');
+            document.getElementById('urlButtons').style.display = (tab === 'single' || tab === 'multi') ? 'flex' : 'none';
+            document.getElementById('infoBtn').classList.toggle('hidden', tab === 'multi');
+
             hideStatus();
             document.getElementById('videoInfo').classList.remove('show');
+            document.getElementById('searchResults').classList.add('hidden');
         }
 
         function updateQuality() {
@@ -341,6 +434,82 @@
             document.getElementById('status').className = 'status';
         }
 
+        // ========== SEARCH ==========
+        async function searchYouTube() {
+            const query = document.getElementById('searchQuery').value.trim();
+            if (!query) { showStatus('Entrez une recherche', 'error'); return; }
+
+            showStatus('<span class="spinner"></span>Recherche en cours...', 'loading');
+
+            try {
+                const response = await fetch('/api/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, max_results: 10 })
+                });
+                const result = await response.json();
+
+                if (result.success && result.results.length > 0) {
+                    hideStatus();
+                    const container = document.getElementById('searchResults');
+                    container.classList.remove('hidden');
+
+                    container.innerHTML = result.results.map(r => `
+                        <div class="search-item" onclick="selectSearchResult('${r.url}')">
+                            <img src="${r.thumbnail}" alt="" onerror="this.style.display='none'">
+                            <div class="search-item-info">
+                                <div class="search-item-title">${r.title}</div>
+                                <div class="search-item-channel">${r.channel}</div>
+                                <div class="search-item-duration">⏱ ${r.duration}</div>
+                            </div>
+                            <button class="search-item-btn" onclick="event.stopPropagation(); downloadDirect('${r.url}')">
+                                Télécharger
+                            </button>
+                        </div>
+                    `).join('');
+                } else {
+                    showStatus('Aucun résultat trouvé', 'error');
+                }
+            } catch (error) {
+                showStatus('Erreur de recherche', 'error');
+            }
+        }
+
+        function selectSearchResult(url) {
+            document.getElementById('url').value = url;
+            switchTab('single');
+            getInfo();
+        }
+
+        async function downloadDirect(url) {
+            const format = document.getElementById('format').value;
+            const quality = document.getElementById('quality').value;
+
+            showStatus('<span class="spinner"></span>Téléchargement...', 'loading');
+
+            try {
+                const response = await fetch('/api/download', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ urls: [url], format, quality })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    const filename = result.data.filename;
+                    showStatus(`Terminé ! <a href="/downloads/${encodeURIComponent(filename)}" style="color: #4caf50;">${filename}</a>`, 'success');
+                    showNotification('Téléchargement terminé', filename);
+                    loadFiles();
+                    loadHistory();
+                } else {
+                    showStatus('Erreur: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showStatus('Erreur de connexion', 'error');
+            }
+        }
+
+        // ========== INFO ==========
         async function getInfo() {
             const url = document.getElementById('url').value.trim();
             if (!url) { showStatus('Veuillez entrer une URL', 'error'); return; }
@@ -414,6 +583,7 @@
             document.getElementById('selectAll').checked = all.length === checked.length;
         }
 
+        // ========== DOWNLOAD ==========
         async function download() {
             const format = document.getElementById('format').value;
             const quality = document.getElementById('quality').value;
@@ -453,6 +623,7 @@
                     } else {
                         const filename = result.data.filename;
                         showStatus(`Terminé ! <a href="/downloads/${encodeURIComponent(filename)}" style="color: #4caf50;">${filename}</a>`, 'success');
+                        showNotification('Téléchargement terminé', filename);
                         loadFiles();
                         loadHistory();
                         btn.disabled = false;
@@ -538,8 +709,10 @@
 
                             if (data.zip_file) {
                                 showStatus(`Terminé ! <a href="/downloads/${encodeURIComponent(data.zip_file)}" style="color: #4caf50; font-weight: bold;">📦 Télécharger le ZIP</a>`, 'success');
+                                showNotification('Téléchargement terminé', `${total} fichiers téléchargés`);
                             } else {
                                 showStatus('Téléchargement terminé !', 'success');
+                                showNotification('Téléchargement terminé', `${total} fichiers téléchargés`);
                             }
                             loadFiles();
                             loadHistory();
@@ -582,6 +755,7 @@
             container.innerHTML = html;
         }
 
+        // ========== FILES & HISTORY ==========
         function formatSize(bytes) {
             if (bytes < 1024) return bytes + ' B';
             if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
@@ -601,7 +775,7 @@
                             <span class="name" title="${f.name}">${f.name}</span>
                             <span class="size">${formatSize(f.size)}</span>
                             <a href="/downloads/${encodeURIComponent(f.name)}">⬇</a>
-                            <span class="delete-btn" onclick="deleteFile('${f.name}')">🗑</span>
+                            <span class="delete-btn" onclick="deleteFile('${f.name.replace(/'/g, "\\'")}')">🗑</span>
                         </div>
                     `).join('');
                 } else {
@@ -653,11 +827,16 @@
             } catch (e) { console.error(e); }
         }
 
-        // Init
+        // ========== INIT ==========
+        document.getElementById('searchQuery').addEventListener('keypress', e => {
+            if (e.key === 'Enter') searchYouTube();
+        });
+
         document.getElementById('url').addEventListener('keypress', e => {
             if (e.key === 'Enter') download();
         });
 
+        checkNotifications();
         loadFiles();
         loadHistory();
     </script>
