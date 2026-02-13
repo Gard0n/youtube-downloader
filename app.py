@@ -116,6 +116,7 @@ def download_single(url, format_type, quality, task_id=None):
                 'preferredquality': quality,
             }],
             'outtmpl': str(DOWNLOAD_DIR / f'%(title)s.%(ext)s'),
+            'noplaylist': True,  # Ne pas télécharger toute la playlist
         }
     else:
         if quality == "best":
@@ -127,6 +128,7 @@ def download_single(url, format_type, quality, task_id=None):
             'format': format_str,
             'outtmpl': str(DOWNLOAD_DIR / f'%(title)s.%(ext)s'),
             'merge_output_format': 'mp4',
+            'noplaylist': True,  # Ne pas télécharger toute la playlist
         }
 
     with yt_dlp.YoutubeDL(options) as ydl:
@@ -260,7 +262,29 @@ def api_download():
         task_id = f"task_{int(time.time() * 1000)}"
 
         if len(urls) == 1:
-            result = download_single(urls[0], format_type, quality)
+            url = urls[0]
+            # Vérifier si c'est une playlist
+            if 'list=' in url or '/playlist' in url:
+                # C'est une playlist, récupérer les vidéos
+                info = get_video_info(url)
+                if info['type'] == 'playlist':
+                    video_urls = [v['url'] for v in info['videos']]
+                    playlist_name = info['title']
+
+                    thread = threading.Thread(
+                        target=download_multiple,
+                        args=(video_urls, format_type, quality, task_id, playlist_name)
+                    )
+                    thread.start()
+                    return jsonify({
+                        'success': True,
+                        'task_id': task_id,
+                        'total': len(video_urls),
+                        'playlist_title': playlist_name
+                    })
+
+            # Vidéo simple
+            result = download_single(url, format_type, quality)
             return jsonify({'success': True, 'data': result})
         else:
             thread = threading.Thread(
