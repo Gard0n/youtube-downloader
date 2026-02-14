@@ -214,6 +214,8 @@
         .file-item a, .history-item a { color: #ff0050; text-decoration: none; margin-left: 10px; font-size: 16px; }
         .file-item .delete-btn { color: #f44336; cursor: pointer; margin-left: 10px; font-size: 14px; opacity: 0.5; }
         .file-item .delete-btn:hover { opacity: 1; }
+        .file-item .convert-btn { color: #2196f3; cursor: pointer; margin-left: 10px; font-size: 14px; opacity: 0.5; transition: opacity 0.2s; }
+        .file-item .convert-btn:hover { opacity: 1; }
 
         .empty-state { color: #666; text-align: center; padding: 20px; }
 
@@ -309,6 +311,7 @@
                     <label>Format</label>
                     <select id="format" onchange="updateQuality()">
                         <option value="mp3">MP3 (Audio)</option>
+                        <option value="wav">WAV (Audio)</option>
                         <option value="mp4">MP4 (Vidéo)</option>
                     </select>
                 </div>
@@ -480,8 +483,10 @@
             const quality = document.getElementById('quality');
             if (format === 'mp3') {
                 quality.innerHTML = '<option value="128">128 kbps</option><option value="192" selected>192 kbps</option><option value="320">320 kbps</option>';
+            } else if (format === 'wav') {
+                quality.innerHTML = '<option value="best" selected>Qualité maximale</option>';
             } else {
-                quality.innerHTML = '<option value="360">360p</option><option value="480">480p</option><option value="720">720p</option><option value="best" selected>Meilleure</option>';
+                quality.innerHTML = '<option value="360">360p</option><option value="480">480p</option><option value="720">720p</option><option value="1080" selected>1080p</option><option value="1440">1440p (2K)</option><option value="4k">4K</option><option value="best">Meilleure dispo</option>';
             }
         }
 
@@ -830,15 +835,31 @@
                 const list = document.getElementById('filesList');
 
                 if (result.success && result.files.length > 0) {
-                    list.innerHTML = result.files.map(f => `
-                        <div class="file-item">
-                            <span class="icon">${f.is_zip ? '📦' : (f.name.endsWith('.mp3') ? '🎵' : '🎬')}</span>
+                    list.innerHTML = result.files.map(f => {
+                        const ext = f.name.split('.').pop().toLowerCase();
+                        const isAudio = ['mp3', 'wav'].includes(ext);
+                        const isVideo = ext === 'mp4';
+                        const icon = f.is_zip ? '📦' : (isAudio ? '🎵' : '🎬');
+                        const escapedName = f.name.replace(/'/g, "\\'");
+
+                        let convertBtn = '';
+                        if (isVideo) {
+                            convertBtn = `<span class="convert-btn" onclick="event.stopPropagation(); convertFile('${escapedName}', 'mp3')" title="Convertir en MP3">🔄</span>`;
+                        } else if (isAudio && ext === 'mp3') {
+                            convertBtn = `<span class="convert-btn" onclick="event.stopPropagation(); convertFile('${escapedName}', 'wav')" title="Convertir en WAV">🔄</span>`;
+                        } else if (isAudio && ext === 'wav') {
+                            convertBtn = `<span class="convert-btn" onclick="event.stopPropagation(); convertFile('${escapedName}', 'mp3')" title="Convertir en MP3">🔄</span>`;
+                        }
+
+                        return `<div class="file-item">
+                            <span class="icon">${icon}</span>
                             <span class="name" title="${f.name}">${f.name}</span>
                             <span class="size">${formatSize(f.size)}</span>
+                            ${convertBtn}
                             <a href="/downloads/${encodeURIComponent(f.name)}">⬇</a>
-                            <span class="delete-btn" onclick="deleteFile('${f.name.replace(/'/g, "\\'")}')">🗑</span>
-                        </div>
-                    `).join('');
+                            <span class="delete-btn" onclick="deleteFile('${escapedName}')">🗑</span>
+                        </div>`;
+                    }).join('');
                 } else {
                     list.innerHTML = '<div class="empty-state">Aucun fichier</div>';
                 }
@@ -856,6 +877,29 @@
                 });
                 loadFiles();
             } catch (e) { console.error(e); }
+        }
+
+        async function convertFile(filename, targetFormat) {
+            if (!confirm(`Convertir "${filename}" en ${targetFormat.toUpperCase()} ?`)) return;
+
+            showStatus(`<span class="spinner"></span>Conversion en ${targetFormat.toUpperCase()}...`, 'loading');
+
+            try {
+                const response = await fetch('/api/convert', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename, target_format: targetFormat })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showStatus(`Converti ! <a href="/downloads/${encodeURIComponent(result.filename)}" style="color: #4caf50;">${result.filename}</a>`, 'success');
+                    loadFiles();
+                } else {
+                    showStatus('Erreur: ' + result.error, 'error');
+                }
+            } catch (e) {
+                showStatus('Erreur de connexion', 'error');
+            }
         }
 
         async function loadHistory() {

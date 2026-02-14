@@ -163,7 +163,8 @@ def get_video_info(url):
 
 def download_single(url, format_type, quality, task_id=None, update_progress=None):
     """Télécharge une seule vidéo"""
-    ext = 'mp3' if format_type == 'mp3' else 'mp4'
+    audio_formats = {'mp3', 'wav'}
+    ext = format_type if format_type in audio_formats else 'mp4'
 
     def progress_hook(d):
         if d['status'] == 'downloading' and update_progress:
@@ -171,12 +172,12 @@ def download_single(url, format_type, quality, task_id=None, update_progress=Non
             speed_str = d.get('_speed_str', 'N/A')
             update_progress(percent_str, speed_str)
 
-    if format_type == 'mp3':
+    if format_type in audio_formats:
         options = {
             'format': 'bestaudio/best',
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
+                'preferredcodec': format_type,
                 'preferredquality': quality,
             }],
             'outtmpl': str(DOWNLOAD_DIR / '%(title)s.%(ext)s'),
@@ -184,10 +185,20 @@ def download_single(url, format_type, quality, task_id=None, update_progress=Non
             'progress_hooks': [progress_hook],
         }
     else:
-        if quality == "best":
+        quality_map = {
+            '4k': 2160,
+            '1440': 1440,
+            '1080': 1080,
+            '720': 720,
+            '480': 480,
+            '360': 360,
+        }
+        height = quality_map.get(quality)
+
+        if quality == "best" or not height:
             format_str = 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
         else:
-            format_str = f'bestvideo[height<={quality}][ext=mp4]+bestaudio[ext=m4a]/best[height<={quality}]'
+            format_str = f'bestvideo[height<={height}][ext=mp4]+bestaudio[ext=m4a]/best[height<={height}]'
 
         options = {
             'format': format_str,
@@ -507,6 +518,41 @@ def api_cleanup():
     return jsonify({'success': True, 'deleted': deleted, 'count': len(deleted)})
 
 
+@app.route('/api/convert', methods=['POST'])
+def convert_file():
+    """Convertit un fichier existant vers un autre format"""
+    import subprocess
+
+    filename = request.json.get('filename', '')
+    target_format = request.json.get('target_format', 'mp3')
+
+    if not filename:
+        return jsonify({'success': False, 'error': 'Fichier non spécifié'})
+
+    source_path = DOWNLOAD_DIR / filename
+    if not source_path.exists():
+        return jsonify({'success': False, 'error': 'Fichier non trouvé'})
+
+    name_without_ext = source_path.stem
+    output_path = DOWNLOAD_DIR / f"{name_without_ext}.{target_format}"
+
+    try:
+        cmd = ['ffmpeg', '-i', str(source_path), '-y']
+        if target_format == 'mp3':
+            cmd += ['-vn', '-ab', '192k', str(output_path)]
+        elif target_format == 'wav':
+            cmd += ['-vn', str(output_path)]
+        elif target_format == 'mp4':
+            cmd += [str(output_path)]
+
+        subprocess.run(cmd, capture_output=True, check=True)
+        return jsonify({'success': True, 'filename': output_path.name})
+    except subprocess.CalledProcessError as e:
+        return jsonify({'success': False, 'error': f'Erreur FFmpeg: {e.stderr.decode()[:200]}'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
 @app.route('/api/search', methods=['POST'])
 def search_youtube():
     """Recherche sur YouTube"""
@@ -533,13 +579,17 @@ def search_youtube():
                 if entry:
                     duration = int(entry.get('duration', 0) or 0)
                     minutes, seconds = divmod(duration, 60)
+                    video_id = entry.get('id', '')
+                    thumbnail = entry.get('thumbnail', '')
+                    if not thumbnail and video_id:
+                        thumbnail = f"https://i.ytimg.com/vi/{video_id}/mqdefault.jpg"
                     results.append({
-                        'id': entry.get('id', ''),
+                        'id': video_id,
                         'title': entry.get('title', 'Unknown'),
                         'channel': entry.get('channel', entry.get('uploader', 'Unknown')),
                         'duration': f"{minutes}:{seconds:02d}",
-                        'thumbnail': entry.get('thumbnail', ''),
-                        'url': f"https://www.youtube.com/watch?v={entry.get('id', '')}",
+                        'thumbnail': thumbnail,
+                        'url': f"https://www.youtube.com/watch?v={video_id}",
                         'views': entry.get('view_count', 0),
                     })
 
