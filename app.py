@@ -31,7 +31,8 @@ def load_settings():
     """Charge les paramètres depuis le fichier JSON"""
     default_settings = {
         'auto_cleanup_enabled': False,
-        'cleanup_days': 7
+        'cleanup_days': 7,
+        'browser': 'chrome'
     }
     if SETTINGS_FILE.exists():
         try:
@@ -47,6 +48,14 @@ def save_settings(settings):
     """Sauvegarde les paramètres dans le fichier JSON"""
     with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
         json.dump(settings, f, ensure_ascii=False, indent=2)
+
+
+def get_cookie_options():
+    """Retourne les options de cookies pour yt-dlp"""
+    browser = load_settings().get('browser', 'chrome')
+    if browser and browser != 'none':
+        return {'cookiesfrombrowser': (browser,)}
+    return {}
 
 
 def cleanup_old_files(days=7):
@@ -126,6 +135,7 @@ def get_video_info(url):
     options = {
         'quiet': True,
         'extract_flat': 'in_playlist',
+        **get_cookie_options(),
     }
 
     with yt_dlp.YoutubeDL(options) as ydl:
@@ -172,6 +182,7 @@ def download_single(url, format_type, quality, task_id=None, update_progress=Non
             speed_str = d.get('_speed_str', 'N/A')
             update_progress(percent_str, speed_str)
 
+    cookie_opts = get_cookie_options()
     if format_type in audio_formats:
         options = {
             'format': 'bestaudio/best',
@@ -183,6 +194,7 @@ def download_single(url, format_type, quality, task_id=None, update_progress=Non
             'outtmpl': str(DOWNLOAD_DIR / '%(title)s.%(ext)s'),
             'noplaylist': True,
             'progress_hooks': [progress_hook],
+            **cookie_opts,
         }
     else:
         quality_map = {
@@ -206,6 +218,7 @@ def download_single(url, format_type, quality, task_id=None, update_progress=Non
             'merge_output_format': 'mp4',
             'noplaylist': True,
             'progress_hooks': [progress_hook],
+            **cookie_opts,
         }
 
     with yt_dlp.YoutubeDL(options) as ydl:
@@ -567,6 +580,7 @@ def search_youtube():
             'quiet': True,
             'extract_flat': True,
             'default_search': 'ytsearch',
+            **get_cookie_options(),
         }
 
         with yt_dlp.YoutubeDL(options) as ydl:

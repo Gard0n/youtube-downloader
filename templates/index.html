@@ -393,6 +393,22 @@
 
             <div class="setting-row">
                 <div class="setting-info">
+                    <span class="setting-label">Navigateur pour les cookies</span>
+                    <span class="setting-desc">Navigateur utilisé pour l'authentification YouTube</span>
+                </div>
+                <select id="browserSelect" onchange="updateBrowser()">
+                    <option value="chrome">Chrome</option>
+                    <option value="firefox">Firefox</option>
+                    <option value="chromium">Chromium</option>
+                    <option value="edge">Edge</option>
+                    <option value="brave">Brave</option>
+                    <option value="safari">Safari</option>
+                    <option value="none">Aucun (désactivé)</option>
+                </select>
+            </div>
+
+            <div class="setting-row">
+                <div class="setting-info">
                     <span class="setting-label">Auto-nettoyage</span>
                     <span class="setting-desc">Supprimer automatiquement les vieux fichiers</span>
                 </div>
@@ -940,7 +956,19 @@
                 if (result.success) {
                     document.getElementById('autoCleanup').checked = result.settings.auto_cleanup_enabled;
                     document.getElementById('cleanupDays').value = result.settings.cleanup_days;
+                    document.getElementById('browserSelect').value = result.settings.browser || 'chrome';
                 }
+            } catch (e) { console.error(e); }
+        }
+
+        async function updateBrowser() {
+            const browser = document.getElementById('browserSelect').value;
+            try {
+                await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ browser })
+                });
             } catch (e) { console.error(e); }
         }
 

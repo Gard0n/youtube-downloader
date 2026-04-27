@@ -10,13 +10,14 @@ from pathlib import Path
 
 
 class YouTubeDownloader:
-    def __init__(self, output_dir: str = "downloads"):
+    def __init__(self, output_dir: str = "downloads", browser: str = "chrome"):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
+        self._cookie_opts = {'cookiesfrombrowser': (browser,)} if browser and browser != 'none' else {}
 
     def get_video_info(self, url: str) -> dict:
         """Récupère les informations de la vidéo"""
-        with yt_dlp.YoutubeDL({'quiet': True}) as ydl:
+        with yt_dlp.YoutubeDL({'quiet': True, **self._cookie_opts}) as ydl:
             try:
                 info = ydl.extract_info(url, download=False)
                 return {
@@ -39,6 +40,7 @@ class YouTubeDownloader:
             }],
             'outtmpl': str(self.output_dir / '%(title)s.%(ext)s'),
             'progress_hooks': [self._progress_hook],
+            **self._cookie_opts,
         }
 
         return self._download(url, options)
@@ -61,6 +63,7 @@ class YouTubeDownloader:
             'outtmpl': str(self.output_dir / '%(title)s.%(ext)s'),
             'merge_output_format': 'mp4',
             'progress_hooks': [self._progress_hook],
+            **self._cookie_opts,
         }
 
         return self._download(url, options)
