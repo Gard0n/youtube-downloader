@@ -52,15 +52,21 @@ def save_settings(settings):
 
 def get_cookie_options():
     """Retourne les options d'authentification pour yt-dlp"""
-    # Sur Railway (serveur), pas de navigateur — on utilise un client alternatif
+    base = {
+        'socket_timeout': 30,
+        'retries': 5,
+        'fragment_retries': 5,
+    }
+    # Sur Railway (serveur), pas de navigateur — on utilise des clients alternatifs
     if os.environ.get('RAILWAY_PROJECT_ID') or os.environ.get('RAILWAY_ENVIRONMENT'):
         return {
-            'extractor_args': {'youtube': {'player_client': ['tv_embedded', 'web']}},
+            **base,
+            'extractor_args': {'youtube': {'player_client': ['ios', 'tv_embedded', 'web']}},
         }
     browser = load_settings().get('browser', 'chrome')
     if browser and browser != 'none':
-        return {'cookiesfrombrowser': (browser,)}
-    return {}
+        return {**base, 'cookiesfrombrowser': (browser,)}
+    return base
 
 
 def cleanup_old_files(days=7):
