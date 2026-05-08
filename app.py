@@ -22,6 +22,12 @@ DOWNLOAD_DIR = BASE_DIR / "downloads"
 DOWNLOAD_DIR.mkdir(exist_ok=True)
 HISTORY_FILE = BASE_DIR / "history.json"
 SETTINGS_FILE = BASE_DIR / "settings.json"
+COOKIES_FILE = BASE_DIR / "cookies.txt"
+
+# Écrire les cookies depuis la variable d'environnement au démarrage
+_cookies_env = os.environ.get('YOUTUBE_COOKIES', '')
+if _cookies_env:
+    COOKIES_FILE.write_text(_cookies_env)
 
 # Status des téléchargements en cours
 download_status = {}
@@ -57,15 +63,14 @@ def get_cookie_options():
         'retries': 5,
         'fragment_retries': 5,
     }
-    # Sur Railway (serveur), pas de navigateur — on utilise des clients alternatifs
-    if os.environ.get('RAILWAY_PROJECT_ID') or os.environ.get('RAILWAY_ENVIRONMENT'):
-        return {
-            **base,
-            'extractor_args': {'youtube': {'player_client': ['ios', 'tv_embedded', 'web']}},
-        }
-    browser = load_settings().get('browser', 'chrome')
-    if browser and browser != 'none':
-        return {**base, 'cookiesfrombrowser': (browser,)}
+    # Priorité 1 : fichier cookies (Railway via variable d'env YOUTUBE_COOKIES)
+    if COOKIES_FILE.exists():
+        return {**base, 'cookiefile': str(COOKIES_FILE)}
+    # Priorité 2 : cookies du navigateur (local uniquement)
+    if not (os.environ.get('RAILWAY_PROJECT_ID') or os.environ.get('RAILWAY_ENVIRONMENT')):
+        browser = load_settings().get('browser', 'chrome')
+        if browser and browser != 'none':
+            return {**base, 'cookiesfrombrowser': (browser,)}
     return base
 
 
