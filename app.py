@@ -219,9 +219,13 @@ def download_single(url, format_type, quality, task_id=None, update_progress=Non
         height = quality_map.get(quality)
 
         if quality == "best" or not height:
-            format_str = 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
+            format_str = 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best'
         else:
-            format_str = f'bestvideo[height<={height}][ext=mp4]+bestaudio[ext=m4a]/best[height<={height}]'
+            format_str = (
+                f'bestvideo[height<={height}][ext=mp4]+bestaudio[ext=m4a]'
+                f'/bestvideo[height<={height}]+bestaudio'
+                f'/best[height<={height}]/best'
+            )
 
         options = {
             'format': format_str,
